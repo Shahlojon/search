@@ -1,8 +1,6 @@
 package search
 
 import (
-	"bufio"
-	"os"
 	"context"
 	"io/ioutil"
 	"log"
@@ -65,7 +63,6 @@ func FindAllMatchTextInFile(phrase, fileName string) (res []Result) {
 	temp := strings.Split(file, "\n")
 
 	for i, line := range temp {
-		//fmt.Println("[", i+1, "]\t", line)
 		if strings.Contains(line, phrase) {
 
 			r := Result{
@@ -82,117 +79,64 @@ func FindAllMatchTextInFile(phrase, fileName string) (res []Result) {
 	return res
 }
 
-//Any
+
+
+// //Any 
 func Any(ctx context.Context, phrase string, files []string) <-chan Result {
-	if files == nil {
-		return nil
-	}
-	part := len(files)
-	ch := make(chan Result, part)
-	//defer close(ch)
-	//ctxx, cansel := context.WithCancel(ctx)
-	for i := 0; i < part; i++ {
-		go func(ctx1 context.Context, fileOpen string, phrase string, c chan<- Result) {
-			select {
-			case <-ctx1.Done():
-				return
-			default:
-				file, err := os.Open(fileOpen)
-				if err != nil {
-					return
-				}
-				defer func() {
-					if cerr := file.Close(); cerr != nil {
-						log.Print(cerr)
-					}
-				}()
-				reader := bufio.NewReader(file)
-				lineNum := 1
-				for {
-					line, _, err := reader.ReadLine()
-					if err != nil || len(line) == 0 {
-						break
-					}
-					if strings.Contains(string(line), phrase) {
-						result := Result{}
-						colNum := strings.Index(string(line), phrase)
-						result.Phrase = phrase
-						result.ColNum = int64(colNum)
-						result.Line = string(line)
-						result.LineNum = int64(lineNum)
-						c <- result
-						break
-					}
-					lineNum++
-				}
+
+	ch := make(chan Result)
+	wg := sync.WaitGroup{}
+	result := Result{}
+	for i := 0; i < len(files); i++ {
+
+		data, err := ioutil.ReadFile(files[i])
+		if err != nil {
+			log.Println("error not opened file err => ", err)
+		}
+		filetext := string(data)
+
+		if strings.Contains(filetext, phrase) {
+			res := FindAnyMatchTextInFile(phrase, filetext)
+			if (Result{}) != res {
+				result = res
+				break
 			}
-		}(ctx, files[i], phrase, ch)
+		}
+
 	}
-	//<-ch
-	//cansel()
+	log.Println(result)
+
+	wg.Add(1)
+	go func(ctx context.Context, ch chan<- Result) {
+		defer wg.Done()
+		if (Result{}) != result {
+			ch <- result
+		} 
+	}(ctx, ch)
+
+	go func() {
+		defer close(ch)
+		wg.Wait()
+	}()
 	return ch
 }
 
-// //Any 
-// func Any(ctx context.Context, phrase string, files []string) <-chan Result {
+//FindAnyMatchTextInFile 
+func FindAnyMatchTextInFile(phrase, filetext string) (res Result) {
+	temp := strings.Split(filetext, "\n")
 
-// 	ch := make(chan Result)
-// 	wg := sync.WaitGroup{}
-// 	result := Result{}
-// 	for i := 0; i < len(files); i++ {
+	for i, line := range temp {
+		if strings.Contains(line, phrase) {
 
-// 		data, err := ioutil.ReadFile(files[i])
-// 		if err != nil {
-// 			log.Println("error not opened file err => ", err)
-// 		}
-// 		filetext := string(data)
+			return Result{
+				Phrase:  phrase,
+				Line:    line,
+				LineNum: int64(i + 1),
+				ColNum:  int64(strings.Index(line, phrase)) + 1,
+			}
 
-// 		if strings.Contains(filetext, phrase) {
-// 			res := FindAnyMatchTextInFile(phrase, filetext)
-// 			if (Result{}) != res {
-// 				result = res
-// 				break
-// 			}
-// 		}
+		}
+	}
 
-// 	}
-// 	log.Println(result)
-
-// 	wg.Add(1)
-// 	go func(ctx context.Context, ch chan<- Result) {
-// 		defer wg.Done()
-// 		if (Result{}) != result {
-// 			ch <- result
-// 		} 
-// 	}(ctx, ch)
-
-// 	go func() {
-// 		defer close(ch)
-// 		wg.Wait()
-// 	}()
-// 	return ch
-// }
-
-// //FindAnyMatchTextInFile 
-// func FindAnyMatchTextInFile(phrase, filetext string) (res Result) {
-
-// 	//ch := make(chan Result)
-
-// 	temp := strings.Split(filetext, "\n")
-
-// 	for i, line := range temp {
-// 		//fmt.Println("[", i+1, "]\t", line)
-// 		if strings.Contains(line, phrase) {
-
-// 			return Result{
-// 				Phrase:  phrase,
-// 				Line:    line,
-// 				LineNum: int64(i + 1),
-// 				ColNum:  int64(strings.Index(line, phrase)) + 1,
-// 			}
-
-// 		}
-// 	}
-
-// 	return res
-// }
+	return res
+}

@@ -8,7 +8,7 @@ import (
 
 func TestAll_user(t *testing.T) {
 
-	ch := All(context.Background(), "HTTP", []string{"../../test.txt"})
+	ch := All(context.Background(), "хотят", []string{"test.txt"})
 
 	s, ok := <-ch
 
@@ -22,7 +22,7 @@ func TestAll_user(t *testing.T) {
 
 func TestAny_user(t *testing.T) {
 
-	res := Any(context.Background(), "HTTP", []string{"../../test.txt", "../../test copy.txt"})
+	res := Any(context.Background(), "HTTP", []string{"test.txt", "test copy.txt"})
 
 	r, ok := <-res
 	if !ok {
@@ -43,7 +43,7 @@ func TestAny_user(t *testing.T) {
 
 func TestAny404_user(t *testing.T) {
 
-	res := Any(context.Background(), "HTP", []string{"../../test.txt", "../../test copy.txt"})
+	res := Any(context.Background(), "HTP", []string{"test.txt", "test copy.txt"})
 
 	r, ok := <-res
 	if !ok {
